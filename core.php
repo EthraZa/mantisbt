@@ -124,15 +124,8 @@ function require_lib( $p_library_name ) {
 		if( file_exists( $t_library_file_path ) ) {
 			require_once( $t_library_file_path );
 		} else {
-			global $g_vendor_path;
-			$t_library_file_path = $g_vendor_path . $p_library_name;
-
-			if( file_exists( $t_library_file_path ) ) {
-				require_once( $t_library_file_path );
-			} else {
-				echo 'External library \'' . $t_library_file_path . '\' not found.';
-				exit;
-			}
+			echo 'External library \'' . $t_library_file_path . '\' not found.';
+			exit;
 		}
 
 		$t_new_globals = array_diff_key( get_defined_vars(), $GLOBALS, array( 't_new_globals' => 0 ) );
@@ -197,9 +190,11 @@ require_lib( 'utf8/str_pad.php' );
 require_api( 'php_api.php' );
 
 # Enforce our minimum PHP requirements
-if( !php_version_at_least( PHP_MIN_VERSION ) ) {
+if( version_compare( PHP_VERSION, PHP_MIN_VERSION, '<' ) ) {
 	@ob_end_clean();
-	echo '<strong>FATAL ERROR: Your version of PHP is too old. MantisBT requires PHP version ' . PHP_MIN_VERSION . ' or newer</strong><br />Your version of PHP is version ' . phpversion();
+	echo '<strong>FATAL ERROR: Your version of PHP is too old. '
+		. 'MantisBT requires ' . PHP_MIN_VERSION . ' or newer</strong><br />'
+		. 'Your are running PHP version <em>' . PHP_VERSION . '</em>';
 	die();
 }
 

@@ -21,7 +21,7 @@
 /**
  * Mantis Version
  */
-define( 'MANTIS_VERSION', '2.6.0-dev' );
+define( 'MANTIS_VERSION', '2.10.0-dev' );
 define( 'FILTER_VERSION', 'v9' );
 
 # --- constants -------------------
@@ -35,6 +35,7 @@ define( 'GOOD', 1 );
 define( 'WARN', 2 );
 
 # PHP-related constants
+define( 'PHP_MIN_VERSION', '5.5.0' );
 define( 'PHP_CLI', 0 );
 define( 'PHP_CGI', 1 );
 
@@ -550,6 +551,7 @@ define( 'LOG_LDAP', 16 );           # logging for LDAP
 define( 'LOG_DATABASE', 32 );       # logging for Database
 define( 'LOG_WEBSERVICE', 64 );     # logging for Web Service Requests
 define( 'LOG_EMAIL_VERBOSE', 128 ); # logging for verbose email internals
+define( 'LOG_PLUGIN', 256 );        # logging for plugins
 
 # COLUMNS_TARGET_*
 define( 'COLUMNS_TARGET_VIEW_PAGE', 1 );
@@ -655,7 +657,7 @@ define( 'EXPORT_BLOCK_SIZE', 500 );
 
 # Maximum "safe" value to be used for integer fields in database.
 # Note: mantis ids are defined in schema as "I UNSIGNED", which Adodb maps to
-# the closest integer (4 bytes) type available. As some DBs dont support unsigned
+# the closest integer (4 bytes) type available. As some DBs don't support unsigned
 # types, 2^31 is a safe limit to be used for all.
 define( 'DB_MAX_INT', 2147483647 );
 
@@ -663,11 +665,13 @@ define( 'DB_MAX_INT', 2147483647 );
 define( 'HTTP_STATUS_SUCCESS', 200 );
 define( 'HTTP_STATUS_CREATED', 201 );
 define( 'HTTP_STATUS_NO_CONTENT', 204 );
+define( 'HTTP_STATUS_NOT_MODIFIED', 304 );
 define( 'HTTP_STATUS_BAD_REQUEST', 400 );
 define( 'HTTP_STATUS_UNAUTHORIZED', 401 );
 define( 'HTTP_STATUS_FORBIDDEN', 403 );
 define( 'HTTP_STATUS_NOT_FOUND', 404 );
 define( 'HTTP_STATUS_CONFLICT', 409 );
+define( 'HTTP_STATUS_PRECONDITION_FAILED', 412 );
 define( 'HTTP_STATUS_INTERNAL_SERVER_ERROR', 500 );
 define( 'HTTP_STATUS_UNAVAILABLE', 503 );
 
@@ -676,6 +680,9 @@ define( 'HEADER_AUTHORIZATION', 'Authorization' );
 define( 'HEADER_LOGIN_METHOD', 'X-Mantis-LoginMethod' );
 define( 'HEADER_USERNAME', 'X-Mantis-Username' );
 define( 'HEADER_VERSION', 'X-Mantis-Version' );
+define( 'HEADER_IF_MATCH', 'If-Match' );
+define( 'HEADER_IF_NONE_MATCH', 'If-None-Match' );
+define( 'HEADER_ETAG', 'ETag' );
 
 # LOGIN METHODS
 define( 'LOGIN_METHOD_COOKIE', 'cookie' );

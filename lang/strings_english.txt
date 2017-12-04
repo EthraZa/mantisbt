@@ -105,6 +105,8 @@ $s_excel_export = 'Excel Export';
 $s_login_anonymously = 'Login Anonymously';
 $s_anonymous = 'Anonymous';
 $s_jump_to_bugnotes = 'Jump to Notes';
+$s_jump_to_history = 'Jump to History';
+$s_display_history = 'Display History';
 $s_public_project_msg = 'This project is public. All users have access.';
 $s_private_project_msg = 'This project is private. Only administrators and manually added users have access.';
 $s_access_level_project = 'Project Access Level';
@@ -531,7 +533,7 @@ $s_bugnote_add_resolve_button = 'Add Note';
 $s_from = 'From';
 $s_to = 'To';
 $s_sent_you_this_reminder_about = 'sent you this reminder about';
-$s_bug_reminder = 'Send a reminder';
+$s_bug_reminder = 'Send a Reminder';
 $s_reminder_sent_to = 'Reminder sent to';
 $s_reminder_sent_none = 'No reminders could be sent';
 $s_reminder_list_truncated = 'recipients list truncated';
@@ -965,7 +967,7 @@ $s_account_deleted_msg = 'Account deleted...';
 $s_delete_account_sure_msg = 'Are you sure you wish to delete this account?';
 
 # manage_user_edit_page.php
-$s_notify_user = 'Notify User';
+$s_notify_user = 'Notify user of this change';
 
 # manage_user_prune.php
 $s_accounts_pruned_msg = 'All accounts that have never logged in and are older than 1 week have been removed';
@@ -1339,6 +1341,7 @@ $s_kb = 'KB';
 $s_attachment_missing = 'Attachment missing';
 $s_attachment_count = 'Attachment count';
 $s_view_attachments_for_issue = 'View %1$d attachment(s) for issue #%2$d';
+$s_warning_update_custom_field_type = '<strong>Warning:</strong> Custom field "%1$s" already has stored values. Changing field type may cause errors and unexpected behaviour if existing values are not consistent with the field\'s new type. To proceed, click the button below';
 
 # PHPMailer
 $s_phpmailer_language = 'en';
@@ -1575,6 +1578,8 @@ $s_path_information = 'MantisBT Path Information';
 $s_mantisbt_database_statistics = 'MantisBT Database Statistics';
 $s_php_version = 'PHP Version';
 $s_adodb_version = 'ADOdb Version';
+$s_database_driver = 'Database Driver';
+$s_database_version_description = 'Database Version, Description';
 
 # months
 $s_month_january = 'January';

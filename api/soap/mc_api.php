@@ -551,7 +551,7 @@ function mci_related_issue_as_array_by_id( $p_issue_id ) {
 function mci_get_user_lang( $p_user_id ) {
 	$t_lang = user_pref_get_pref( $p_user_id, 'language' );
 	if( $t_lang == 'auto' ) {
-		$t_lang = config_get( 'fallback_language' );
+		$t_lang = config_get_global( 'fallback_language' );
 	}
 	return $t_lang;
 }
@@ -662,7 +662,7 @@ function mci_sanitize_xml_string ( $p_input ) {
  * @return string MantisBT URL terminated by a /.
  */
 function mci_get_mantis_path() {
-	return config_get( 'path' );
+	return config_get_global( 'path' );
 }
 
 /**
@@ -797,38 +797,60 @@ function mci_get_category( $p_category_id ) {
 }
 
 /**
- * Convert a category name to a category id for a given project
+ * Convert a category name, or category object reference (array w/ id, name,
+ * or id + name) to a category id for a given project.
+ *
  * @param string|array $p_category Category name or array with id and/or name.
  * @param integer $p_project_id    Project id.
- * @return integer category id or 0 if not found
+ * @return integer|SoapFault|RestFault category id or error.
  */
 function mci_get_category_id( $p_category, $p_project_id ) {
-	if( !isset( $p_category ) ) {
-		return 0;
-	}
-
-	if( is_array( $p_category ) ) {
-		if( isset( $p_category['id'] ) ) {
-			if( category_exists( $p_category['id'] ) ) {
-				return $p_category['id'];
-			}
-		} else if( isset( $p_category['name'] ) ) {
-			$t_category_name = $p_category['name'];
-		} else {
+	$fn_get_category_id_internal = function( $p_category, $p_project_id ) {
+		if( !isset( $p_category ) ) {
 			return 0;
 		}
-	} else {
-		$t_category_name = $p_category;
-	}
 
-	$t_cat_array = category_get_all_rows( $p_project_id );
-	foreach( $t_cat_array as $t_category_row ) {
-		if( $t_category_row['name'] == $t_category_name ) {
-			return $t_category_row['id'];
+		$t_category_name = '';
+
+		if( is_array( $p_category ) ) {
+			if( isset( $p_category['id'] ) ) {
+				if( category_exists( $p_category['id'] ) ) {
+					return $p_category['id'];
+				}
+			} else if( isset( $p_category['name'] ) ) {
+				$t_category_name = $p_category['name'];
+			} else {
+				return 0;
+			}
+		} else {
+			$t_category_name = $p_category;
 		}
+
+		$t_cat_array = category_get_all_rows( $p_project_id );
+		foreach( $t_cat_array as $t_category_row ) {
+			if( strcasecmp( $t_category_row['name'], $t_category_name ) == 0 ) {
+				return $t_category_row['id'];
+			}
+		}
+
+		return 0;
+	};
+
+	$t_category_id = $fn_get_category_id_internal( $p_category, $p_project_id );
+	if( $t_category_id == 0 && !config_get( 'allow_no_category' ) ) {
+		if( !isset( $p_category ) ) {
+			return ApiObjectFactory::faultBadRequest( 'Category field must be supplied.' );
+		}
+
+		# category may be a string, array with id, array with name, or array
+		# with id + name. Serialize to json to include in error message.
+		$t_cat_desc = json_encode( $p_category );
+
+		return ApiObjectFactory::faultBadRequest(
+			"Category '{$t_cat_desc}' not found." );
 	}
 
-	return 0;
+	return $t_category_id;
 }
 
 /**
@@ -1136,4 +1158,14 @@ function mci_remove_empty_arrays( &$p_array ) {
 	foreach( $t_keys_to_remove as $t_key ) {
 		unset( $p_array[$t_key] );
 	}
+}
+
+/**
+ * Hash a string for etag.
+ *
+ * @param string $p_string The string to hash
+ * @return string The hash.
+ */
+function mci_etag_hash( $p_string ) {
+	return hash( 'sha256', $p_string );
 }

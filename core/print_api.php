@@ -111,7 +111,7 @@ function print_header_redirect( $p_url, $p_die = true, $p_sanitize = false, $p_a
 		if( $p_sanitize ) {
 			$t_url = string_sanitize_url( $p_url, true );
 		} else {
-			$t_url = config_get( 'path' ) . $p_url;
+			$t_url = config_get_global( 'path' ) . $p_url;
 		}
 	}
 
@@ -1115,7 +1115,7 @@ function print_language_option_list( $p_language ) {
  */
 function print_all_bug_action_option_list( array $p_project_ids = null ) {
 	$t_commands = bug_group_action_get_commands( $p_project_ids );
-	while( list( $t_action_id, $t_action_label ) = each( $t_commands ) ) {
+	foreach ( $t_commands as $t_action_id => $t_action_label) {
 		echo '<option value="' . $t_action_id . '">' . $t_action_label . '</option>';
 	}
 }
@@ -1401,29 +1401,25 @@ function print_manage_project_sort_link( $p_page, $p_string, $p_field, $p_dir, $
  * @see form_security_token()
  * @return void
  */
-function print_form_button( $p_action_page, $p_label, $p_args_to_post = null, $p_security_token = null, $p_class = '' ) {
+function print_form_button( $p_action_page, $p_label, array $p_args_to_post = null, $p_security_token = null, $p_class = '' ) {
 	$t_form_name = explode( '.php', $p_action_page, 2 );
 	# TODO: ensure all uses of print_button supply arguments via $p_args_to_post (POST)
 	# instead of via $p_action_page (GET). Then only add the CSRF form token if
 	# arguments are being sent via the POST method.
-	echo '<form method="post" action="', htmlspecialchars( $p_action_page ), '" class="form-inline">';
+	echo '<form method="post" action="', htmlspecialchars( $p_action_page ), '" class="form-inline inline single-button-form">';
 	echo '<fieldset>';
 	if( $p_security_token !== OFF ) {
 		echo form_security_field( $t_form_name[0], $p_security_token );
 	}
 	if( $p_class !== '') {
-		echo '<input type="submit" class="' . $p_class . '" value="', $p_label, '" />';
+		$t_class = $p_class;
 	} else {
-		echo '<input type="submit" class="btn btn-primary btn-xs btn-white btn-round" value="', $p_label, '" />';
+		$t_class = 'btn btn-primary btn-xs btn-white btn-round';
 	}
-
-	if( $p_args_to_post !== null ) {
-		foreach( $p_args_to_post as $t_var => $t_value ) {
-			echo '<input type="hidden" name="' . $t_var .
-				'" value="' . htmlentities( $t_value ) . '" />';
-		}
+	echo '<button type="submit" class="' . $t_class . '">' . $p_label . '</button>';
+	if( $p_args_to_post ) {
+		print_hidden_inputs( $p_args_to_post );
 	}
-
 	echo '</fieldset>';
 	echo '</form>';
 }
@@ -1791,7 +1787,7 @@ function print_file_icon( $p_filename ) {
  * @return void
  */
 function print_rss( $p_feed_url, $p_title = '' ) {
-	$t_path = config_get( 'path' );
+	$t_path = config_get_global( 'path' );
 	echo '<a class="rss" rel="alternate" href="', htmlspecialchars( $p_feed_url ), '" title="', $p_title, '"><i class="fa fa-rss fa-lg orange" alt="', $p_title, '"></i></a>';
 }
 
@@ -1842,7 +1838,7 @@ function get_dropdown( array $p_control_array, $p_control_name, $p_match = '', $
 	if( $p_add_any ) {
 		array_unshift_assoc( $p_control_array, META_FILTER_ANY, lang_trans( '[any]' ) );
 	}
-	while( list( $t_name, $t_desc ) = each( $p_control_array ) ) {
+	foreach ( $p_control_array as $t_name => $t_desc ) {
 		$t_sel = '';
 		if( is_array( $p_match ) ) {
 			if( in_array( $t_name, array_values( $p_match ) ) || in_array( $t_desc, array_values( $p_match ) ) ) {
@@ -1990,7 +1986,7 @@ function print_bug_attachment_preview_text( array $p_attachment ) {
 		default:
 			trigger_error( ERROR_GENERIC, ERROR );
 	}
-	echo htmlspecialchars( $t_content );
+	echo htmlspecialchars( $t_content, ENT_SUBSTITUTE, 'UTF-8' );
 	echo '</pre>';
 }
 

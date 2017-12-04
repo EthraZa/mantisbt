@@ -506,7 +506,7 @@ function email_signup( $p_user_id, $p_confirm_hash, $p_admin_name = '' ) {
 	#  use same language as display for the email
 	#  lang_push( user_pref_get_language( $p_user_id ) );
 	# retrieve the username and email
-	$t_username = user_get_field( $p_user_id, 'username' );
+	$t_username = user_get_username( $p_user_id );
 	$t_email = user_get_email( $p_user_id );
 
 	# Build Welcome Message
@@ -552,7 +552,7 @@ function email_send_confirm_hash_url( $p_user_id, $p_confirm_hash ) {
 	lang_push( user_pref_get_language( $p_user_id ) );
 
 	# retrieve the username and email
-	$t_username = user_get_field( $p_user_id, 'username' );
+	$t_username = user_get_username( $p_user_id );
 	$t_email = user_get_email( $p_user_id );
 
 	$t_subject = '[' . config_get( 'window_title' ) . '] ' . lang_get( 'lost_password_subject' );
@@ -1259,9 +1259,9 @@ function email_send( EmailData $p_email_data ) {
 	}
 
 	# @@@ should this be the current language (for the recipient) or the default one (for the user running the command) (thraxisp)
-	$t_lang = config_get( 'default_language' );
+	$t_lang = config_get_global( 'default_language' );
 	if( 'auto' == $t_lang ) {
-		$t_lang = config_get( 'fallback_language' );
+		$t_lang = config_get_global( 'fallback_language' );
 	}
 	$t_mail->SetLanguage( lang_get( 'phpmailer_language', $t_lang ) );
 
@@ -1298,6 +1298,16 @@ function email_send( EmailData $p_email_data ) {
 			$t_mail->Port = config_get( 'smtp_port' );
 
 			break;
+	}
+
+	#apply DKIM settings
+	if( config_get( 'email_dkim_enable' ) ) {
+		$t_mail->DKIM_domain = config_get( 'email_dkim_domain' );
+		$t_mail->DKIM_private = config_get( 'email_dkim_private_key_file_path' );
+		$t_mail->DKIM_private_string = config_get( 'email_dkim_private_key_string' );
+		$t_mail->DKIM_selector = config_get( 'email_dkim_selector' );
+		$t_mail->DKIM_passphrase = config_get( 'email_dkim_passphrase' );
+		$t_mail->DKIM_identity = config_get( 'email_dkim_identity' );
 	}
 
 	$t_mail->IsHTML( false );              # set email format to plain text

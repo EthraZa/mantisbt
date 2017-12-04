@@ -69,7 +69,6 @@ $g_database_name		= 'bugtracker';
  * RDBMS           db_type       PHP ext   Comments
  * -----           -------       -------   --------
  * MySQL           mysqli        mysqli    default
- *                 mysql         mysql     PHP < 5.5.0 only
  * PostgreSQL      pgsql         pgsql
  * MS SQL Server   mssqlnative   sqlsrv    experimental
  * Oracle          oci8          oci8      experimental
@@ -117,7 +116,7 @@ $g_db_table_suffix = '_table';
  * e.g. 'Example' plugin's table 'foo' => 'mantis_plugin_Example_foo_table'.
  * To avoid the 30-char limit on identifiers in Oracle (< 12cR2), the prefix
  * should be kept as short as possible (e.g. 'plg'); it is however strongly
- * recomended not to use an empty string here.
+ * recommended not to use an empty string here.
  * @see $g_db_table_prefix
  * @global string $g_db_table_prefix
  */
@@ -298,6 +297,8 @@ $g_session_validation = ON;
  * not correctly work with this option enabled because they cache pages
  * incorrectly.
  * WARNING: Disabling this is a security risk!!
+ *
+ * @global integer $g_form_security_validation
  */
 $g_form_security_validation = ON;
 
@@ -381,7 +382,7 @@ $g_signup_use_captcha	= ON;
 /**
  * absolute path (with trailing slash!) to folder which contains your
  * TrueType-Font files used for the Relationship Graphs,
- * the Workflow Graphs and the MantisGraph plugin
+ * and the Workflow Graphs
  * @global string $g_system_font_folder
  */
 $g_system_font_folder	= '';
@@ -681,6 +682,82 @@ $g_smtp_connection_mode = '';
 $g_smtp_port = 25;
 
 /**
+ * Enable DomainKeys Identified Mail (DKIM) Signatures (rfc6376)
+ * To successfully sign mails you need to enable DKIM and provide at least:
+ * - DKIM domain
+ * - DKIM private key or key file path
+ * - DKIM selector
+ * - DKIM identity
+ * @see $g_email_dkim_domain
+ * @see $g_email_dkim_private_key_file_path
+ * @see $g_email_dkim_private_key_string
+ * @see $g_email_dkim_selector
+ * @see $g_email_dkim_identity
+ * @global integer $g_email_dkim_enable
+ */
+$g_email_dkim_enable = OFF;
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures domain
+ * This is usually the same as the domain of your from email
+ * @see $g_from_email
+ * @see $g_email_dkim_enable
+ * @global string $g_email_dkim_domain
+ */
+$g_email_dkim_domain = 'example.com';
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures private key path
+ * Path to the private key. If $g_email_dkim_private_key_string is specified
+ * this setting will not be used.
+ * @see $g_email_dkim_private_key_string
+ * @see $g_email_dkim_enable
+ * @global string $g_email_dkim_private_key_file_path
+ */
+$g_email_dkim_private_key_file_path = '';
+
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures private key value
+ * This string should contain private key for signing. Leave empty
+ * string if you wish to load the key from the file defined with
+ * $g_email_dkim_private_key_file_path.
+ * @see $g_email_dkim_enable
+ * @see $g_email_dkim_private_key_file_path
+ * @global string $g_email_dkim_private_key_string
+ */
+$g_email_dkim_private_key_string = '';
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures selector
+ * DNS selector for the signature (rfc6376)
+ * DNS TXT field should have for instance:
+ *   host mail.example._domainkey
+ *   value v=DKIM1; t=s; n=core; k=rsa; p=[public key]
+ * @see $g_email_dkim_enable
+ * @global string $g_email_dkim_selector
+ */
+$g_email_dkim_selector = 'mail.example';
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures private key password
+ * Leave empty string if your private key does not have password
+ * @see $g_email_dkim_enable
+ * @global string $g_email_dkim_passphrase
+ */
+$g_email_dkim_passphrase = '';
+
+/**
+ * DomainKeys Identified Mail (DKIM) Signatures identity
+ * Identity you are signing the mails with (rfc6376)
+ * This is usually the same as your from email
+ * @see $g_from_email
+ * @see $g_email_dkim_enable
+ * @global string $g_email_dkim_identity
+ */
+$g_email_dkim_identity = 'noreply@example.com';
+
+/**
  * It is recommended to use a cronjob or a scheduler task to send emails. The
  * cronjob should typically run every 5 minutes.  If no cronjob is used,then
  * user will have to wait for emails to be sent after performing an action
@@ -962,7 +1039,7 @@ $g_severity_significant_threshold = MAJOR;
 
 /**
  * The default columns to be included in the View Issues Page.
- * This can be overriden using Manage -> Manage Configuration -> Manage Columns
+ * This can be overridden using Manage -> Manage Configuration -> Manage Columns
  * Also each user can configure their own columns using My Account -> Manage
  * Columns. Some of the columns specified here can be removed automatically if
  * they conflict with other configuration. Or if the current user doesn't have
@@ -1166,6 +1243,7 @@ $g_complete_date_format = 'Y-m-d H:i T';
 
 /**
  * Datetime picker widget format string.
+ * This format needs needs to match the one defined in {@see $g_normal_date_format}
  * For detailed instructions on date formatting
  * @see http://momentjs.com/docs/#/displaying/format/
  * @global string $g_datetime_picker_format
@@ -1203,6 +1281,8 @@ $g_default_timezone = '';
  * Indicates whether the news feature should be enabled or disabled.
  * This feature is deprecated and is expected to be moved to a plugin
  * in the future.
+ *
+ * @global integer $g_news_enabled
  */
 $g_news_enabled = OFF;
 
@@ -1317,6 +1397,12 @@ $g_default_bug_eta = ETA_NONE;
 $g_default_bug_relationship_clone = BUG_REL_NONE;
 
 /**
+ * Allow parent bug to close regardless of child status.
+ * @global integer $g_allow_parent_of_unresolved_to_close
+ */
+$g_allow_parent_of_unresolved_to_close = OFF;
+
+/**
  * Default for new bug relationships
  * @global integer $g_default_bug_relationship
  */
@@ -1349,7 +1435,7 @@ $g_hide_status_default = CLOSED;
 
 /**
  *
- * @global string $g_show_sticky_issues
+ * @global integer $g_show_sticky_issues
  */
 $g_show_sticky_issues = ON;
 
@@ -1549,7 +1635,7 @@ $g_severity_multipliers = array(
  * @global array $g_resolution_multipliers
  */
 $g_resolution_multipliers = array(
-	UNABLE_TO_DUPLICATE => 2,
+	UNABLE_TO_REPRODUCE => 2,
 	NOT_FIXABLE         => 1,
 	DUPLICATE           => 3,
 	NOT_A_BUG           => 5,
@@ -2068,7 +2154,7 @@ $g_bug_resolution_fixed_threshold = FIXED;
  * threshold are considered to be resolved in an unsuccessful way.
  * @global integer $g_bug_resolution_not_fixed_threshold
  */
-$g_bug_resolution_not_fixed_threshold = UNABLE_TO_DUPLICATE;
+$g_bug_resolution_not_fixed_threshold = UNABLE_TO_REPRODUCE;
 
 /**
  * Bug is closed.  In some custom installations a bug may be considered as
@@ -2159,14 +2245,6 @@ $g_preview_max_height = 250;
  * @global integer $g_view_attachments_threshold
  */
 $g_view_attachments_threshold = VIEWER;
-
-/**
- * list of filetypes to view inline. This is a string of extensions separated
- * by commas. This is used when downloading an attachment. Rather than
- * downloading, the attachment is viewed in the browser.
- * @global string $g_inline_file_exts
- */
-$g_inline_file_exts = 'gif,png,jpg,jpeg,bmp';
 
 /**
  * access level needed to download bug attachments
@@ -2577,15 +2655,13 @@ $g_update_bug_assign_threshold = '%handle_bug_threshold%';
 $g_private_bugnote_threshold = DEVELOPER;
 
 /**
- * access level needed to view handler in bug reports and notification email
- * @todo yarick123: now it is implemented for notification email only
+ * access level needed to view handler
  * @global integer $g_view_handler_threshold
  */
 $g_view_handler_threshold = VIEWER;
 
 /**
- * access level needed to view history in bug reports and notification email
- * @todo yarick123: now it is implemented for notification email only
+ * access level needed to view history
  * @global integer $g_view_history_threshold
  */
 $g_view_history_threshold = VIEWER;
@@ -3332,12 +3408,6 @@ $g_css_include_file = 'default.css';
 $g_css_rtl_include_file = 'rtl.css';
 
 /**
- * meta tags
- * @global string $g_meta_include_file
- */
-$g_meta_include_file = '';
-
-/**
  * A flag that indicates whether to use CDN (content delivery networks) for loading
  * javascript libraries and their associated CSS.  This improves performance for
  * loading MantisBT pages.  This can be disabled if it is desired that MantisBT
@@ -3547,7 +3617,7 @@ $g_file_type_icons = array(
 
 /**
  *
- * Content types which will be overriden when downloading files
+ * Content types which will be overridden when downloading files
  *
  * @global array $g_file_download_content_type_overrides
  */
@@ -4015,6 +4085,8 @@ $g_due_date_default = '';
  * Whether sub-projects feature should be enabled.  Before turning this flag OFF,
  * make sure all sub-projects are moved to top level projects, otherwise
  * they won't be accessible.
+ *
+ * @global integer $g_subprojects_enabled
  */
 $g_subprojects_enabled = ON;
 
@@ -4025,6 +4097,8 @@ $g_subprojects_inherit_categories = ON;
 
 /**
  * Sub-projects should inherit versions from parent projects.
+ *
+ * @global integer $g_subprojects_inherit_versions
  */
 $g_subprojects_inherit_versions = ON;
 
@@ -4137,7 +4211,7 @@ $g_stop_on_errors = OFF;
  * The available log channels are:
  *
  * LOG_NONE, LOG_EMAIL, LOG_EMAIL_RECIPIENT, LOG_EMAIL_VERBOSE, LOG_FILTERING,
- * LOG_AJAX, LOG_LDAP, LOG_DATABASE, LOG_WEBSERVICE, LOG_ALL
+ * LOG_AJAX, LOG_LDAP, LOG_DATABASE, LOG_WEBSERVICE, LOG_PLUGIN, LOG_ALL
  *
  * and can be combined using
  * {@link http://php.net/language.operators.bitwise PHP bitwise operators}
@@ -4192,7 +4266,7 @@ $g_global_settings = array(
 	'anonymous_account', 'compress_html', 'allow_permanent_cookie',
 	'cookie_time_length', 'cookie_path', 'cookie_domain',
 	'cookie_prefix', 'string_cookie', 'project_cookie', 'view_all_cookie',
-	'manage_config_cookie', 'manage_user_cookie', 'logout_cookie',
+	'manage_config_cookie', 'logout_cookie',
 	'bug_list_cookie', 'crypto_master_salt', 'custom_headers',
 	'database_name', 'db_username', 'db_password', 'db_type',
 	'db_table_prefix','db_table_suffix', 'display_errors', 'form_security_validation',
@@ -4200,7 +4274,7 @@ $g_global_settings = array(
 	'language_auto_map', 'fallback_language', 'login_method', 'plugins_enabled', 'session_handler',
 	'session_save_path', 'session_validation', 'show_detailed_errors', 'show_queries_count',
 	'stop_on_errors', 'version_suffix', 'debug_email',
-	'fileinfo_magic_db_file', 'css_include_file', 'css_rtl_include_file', 'meta_include_file',
+	'fileinfo_magic_db_file', 'css_include_file', 'css_rtl_include_file',
 	'file_type_icons', 'path', 'short_path', 'absolute_path', 'core_path',
 	'class_path','library_path', 'language_path', 'absolute_path_default_upload_folder',
 	'ldap_simulation_file_path', 'plugin_path', 'bottom_include_page', 'top_include_page',
@@ -4228,6 +4302,7 @@ $g_public_config_names = array(
 	'allow_file_upload',
 	'allow_freetext_in_profile_fields',
 	'allow_no_category',
+	'allow_parent_of_unresolved_to_close',
 	'allow_permanent_cookie',
 	'allow_reporter_close',
 	'allow_reporter_reopen',
@@ -4349,6 +4424,10 @@ $g_public_config_names = array(
 	'due_date_update_threshold',
 	'due_date_view_threshold',
 	'email_ensure_unique',
+	'email_dkim_domain',
+	'email_dkim_enable',
+	'email_dkim_identity',
+	'email_dkim_selector',
 	'email_login_enabled',
 	'email_notifications_verbose',
 	'email_padding_length',
@@ -4384,7 +4463,6 @@ $g_public_config_names = array(
 	'html_valid_tags_single_line',
 	'html_valid_tags',
 	'impersonate_user_threshold',
-	'inline_file_exts',
 	'issue_activity_note_attachments_seconds_threshold',
 	'language_auto_map',
 	'language_choices_arr',
@@ -4413,7 +4491,6 @@ $g_public_config_names = array(
 	'max_lost_password_in_progress_count',
 	'mentions_enabled',
 	'mentions_tag',
-	'meta_include_file',
 	'min_refresh_delay',
 	'minimum_sponsorship_amount',
 	'monitor_add_others_bug_threshold',
@@ -4698,13 +4775,13 @@ $g_webservice_error_when_version_not_found = ON;
 $g_webservice_version_when_not_found = '';
 
 /**
- * Whether the REST API (experimental) is enabled or not.  Note that this flag only
+ * Whether the REST API is enabled or not.  Note that this flag only
  * impacts API Token based auth.  Hence, even if the API is disabled, it can still be
  * used from the Web UI using cookie based authentication.
  *
  * @global integer $g_webservice_rest_enabled
  */
-$g_webservice_rest_enabled = OFF;
+$g_webservice_rest_enabled = ON;
 
 ####################
 # Issue Activities #

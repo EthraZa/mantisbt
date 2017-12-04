@@ -90,7 +90,243 @@ function mc_issue_get( $p_username, $p_password, $p_issue_id ) {
 }
 
 /**
-* Get history details about an issue.
+ * Get history details for an issue that is visible to specified user.
+ * This is used by REST APIs and assumes that user access to issue is
+ * already done.
+ *
+ * @param integer $p_issue_id The issue id.
+ * @param integer $p_user_id The user id.
+ * @param string $p_lang The user language.
+ * @return array history entries or empty if user has no access to history.
+ */
+function mci_issue_get_history( $p_issue_id, $p_user_id, $p_lang ) {
+	$t_project_id = bug_get_field( $p_issue_id, 'project_id' );
+
+	$t_view_history_threshold = config_get( 'view_history_threshold', null, null, $t_project_id );
+	if( !access_has_bug_level( $t_view_history_threshold, $p_issue_id, $p_user_id ) ) {
+		return array();
+	}
+
+	$t_history_rows = history_get_raw_events_array( $p_issue_id, $p_user_id );
+
+	$t_history = array();
+
+	foreach( $t_history_rows as $t_history_row ) {
+		$t_type = (int)$t_history_row['type'];
+
+		$t_skip = false;
+
+		switch( $t_type ) {
+			case BUG_ADD_SPONSORSHIP:         # Deprecated, not exposed in REST API
+			case BUG_UPDATE_SPONSORSHIP:      # Deprecated, not exposed in REST API
+			case BUG_DELETE_SPONSORSHIP:      # Deprecated, not exposed in REST API
+			case BUG_REVISION_DROPPED:        # Not Supported
+			case BUGNOTE_REVISION_DROPPED:    # Not Supported
+				$t_skip = true;
+				break;
+		}
+
+		$t_event = array();
+
+		$t_event['created_at'] = ApiObjectFactory::datetime( $t_history_row['date'] );
+		$t_event['user'] = mci_account_get_array_by_id( $t_history_row['userid'] );
+
+		$t_field = $t_history_row['field'];
+		if( !is_blank( $t_field ) ) {
+			# map field names to external names
+			switch( $t_field )  {
+				case 'reporter_id':
+					$t_field = 'reporter';
+					break;
+				case 'handler_id':
+					$t_field = 'handler';
+					break;
+				case 'sponsorship_total':
+					# Skip sponsorship fields
+					$t_skip = true;
+					break;
+			}
+
+			$t_event['field'] = array(
+				'name' => $t_field,
+				'label' => history_localize_field_name( $t_history_row['field'] ) );
+		}
+
+		if( $t_skip ) {
+			continue;
+		}
+
+		$t_event['type'] = array(
+			'id' => $t_type,
+			'name' => history_get_type_name( $t_history_row['type'] ) );
+
+		$t_old_value_name = 'old_value';
+		$t_new_value_name = 'new_value';
+
+		$t_show_old_value = true;
+		$t_show_new_value = true;
+
+		switch( $t_type ) {
+			case NEW_BUG:
+			case DESCRIPTION_UPDATED:
+			case ADDITIONAL_INFO_UPDATED:
+			case STEP_TO_REPRODUCE_UPDATED:
+				$t_show_old_value = false;
+				$t_show_new_value = false;
+				break;
+			case TAG_ATTACHED:
+			case TAG_DETACHED:
+				$t_show_new_value = false;
+				$t_old_value_name = 'tag';
+				break;
+			case FILE_ADDED:
+			case FILE_DELETED:
+				$t_show_new_value = false;
+				$t_old_value_name = 'file';
+				break;
+			case BUGNOTE_ADDED:
+			case BUGNOTE_UPDATED:
+			case BUGNOTE_DELETED:
+				$t_show_new_value = false;
+				$t_old_value_name = 'note';
+				break;
+			case BUGNOTE_STATE_CHANGED:
+				$t_old_value_name = 'view_state';
+				$t_new_value_name = 'note';
+				break;
+			case BUG_ADD_RELATIONSHIP:
+			case BUG_REPLACE_RELATIONSHIP:
+			case BUG_DEL_RELATIONSHIP:
+				$t_old_value_name = 'relationship';
+				$t_new_value_name = 'issue';
+				break;
+			case BUG_CLONED_TO:
+				$t_show_old_value = false;
+				$t_new_value_name = 'issue';
+				break;
+		}
+
+		$t_files = file_get_visible_attachments( $p_issue_id );
+
+		$fn_process_value = function( $p_issue_id, $p_type, $p_field, $p_value, $p_lang, $p_new_value ) use ( $t_files ) {
+			if( is_blank( $p_value ) ) {
+				return '';
+			}
+
+			switch( $p_type ) {
+				case TAG_ATTACHED:
+				case TAG_DETACHED:
+					$t_tag = tag_get_by_name( $p_value );
+					if( $t_tag === false ) {
+						return array( 'name' => $p_value );
+					}
+
+					return array( 'id' => $t_tag['id'], 'name' => $t_tag['name'] );
+				case BUGNOTE_ADDED:
+				case BUGNOTE_DELETED:
+					return array( 'id' => (int)$p_value );
+				case BUGNOTE_UPDATED:
+					if( !$p_new_value ) {
+						return array( 'id' => (int) $p_value );
+					}
+
+					return '';
+				case FILE_ADDED:
+				case FILE_DELETED:
+					$t_value = array();
+
+					$t_id = null;
+					foreach( $t_files as $t_file ) {
+						if( $t_file['display_name'] == $p_value ) {
+							$t_value['id'] = (int)$t_file['id'];
+							break;
+						}
+					}
+
+					$t_value['filename'] = $p_value;
+
+					return $t_value;
+				case BUGNOTE_STATE_CHANGED:
+					if( $p_new_value ) {
+						return array( 'id' => (int)$p_value );
+					}
+
+					return mci_enum_get_array_by_id( (int)$p_value, 'view_state', $p_lang );
+				case BUG_ADD_RELATIONSHIP:
+				case BUG_REPLACE_RELATIONSHIP:
+				case BUG_DEL_RELATIONSHIP:
+					if( $p_new_value ) {
+						return array( 'id' => (int)$p_value );
+					}
+
+					return array(
+						'id' => (int)$p_value,
+						'name' => relationship_get_name_for_api( (int)$p_value ),
+						'label' => relationship_get_description_for_history( (int)$p_value ) );
+				case BUG_CLONED_TO:
+					return array( 'id' => (int)$p_value );
+			}
+
+			switch( $p_field ) {
+				case 'status':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'status', $p_lang );
+					break;
+				case 'priority':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'priority', $p_lang );
+					break;
+				case 'severity':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'severity', $p_lang );
+					break;
+				case 'view_state':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'view_state', $p_lang );
+					break;
+				case 'resolution':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'resolution', $p_lang );
+					break;
+				case 'reproducibility':
+					$t_value = mci_enum_get_array_by_id( (int)$p_value, 'reproducibility', $p_lang );
+					break;
+				case 'reporter':
+				case 'handler':
+					$t_value = mci_account_get_array_by_id( (int)$p_value );
+					break;
+				default:
+					$t_value = $p_value;
+					break;
+			}
+
+			return $t_value;
+		};
+
+		if( $t_show_old_value ) {
+			$t_event[$t_old_value_name] = $fn_process_value( $p_issue_id, $t_type, $t_field, $t_history_row['old_value'], $p_lang, false );
+		}
+
+		if( $t_show_new_value ) {
+			$t_event[$t_new_value_name] = $fn_process_value( $p_issue_id, $t_type, $t_field, $t_history_row['new_value'], $p_lang, true );
+		}
+
+		$t_localized_row = history_localize_item(
+			$t_history_row['field'],
+			$t_history_row['type'],
+			$t_history_row['old_value'],
+			$t_history_row['new_value'],
+			false );
+
+		$t_event['message'] = $t_localized_row['note'];
+
+		if( !is_blank( $t_localized_row['change'] ) ) {
+			$t_event['change'] = $t_localized_row['change'];
+		}
+
+		$t_history[] = $t_event;
+	}
+
+	return $t_history;
+}
+
+/**
+* Get history details about an issue, used by SOAP APIs.
 *
 * @param string  $p_username The name of the user trying to access the issue.
 * @param string  $p_password The password of the user.
@@ -159,12 +395,15 @@ function mci_issue_set_custom_fields( $p_issue_id, array &$p_custom_fields = nul
 	if( isset( $p_custom_fields ) && is_array( $p_custom_fields ) ) {
 		foreach( $p_custom_fields as $t_custom_field ) {
 
-			$t_custom_field = ApiObjectFactory::objectToArray( $t_custom_field );
+			if( is_object( $t_custom_field ) ) {
+				$t_custom_field = ApiObjectFactory::objectToArray( $t_custom_field );
+			}
+
 			# Verify validity of custom field specification
 			$t_msg = 'Invalid Custom field specification';
 			$t_valid_cf = isset( $t_custom_field['field'] ) && isset( $t_custom_field['value'] );
 			if( $t_valid_cf ) {
-				$t_field = get_object_vars( $t_custom_field['field'] );
+				$t_field = get_object_vars( (object)$t_custom_field['field'] );
 				if( ( !isset( $t_field['id'] ) || $t_field['id'] == 0 ) && !isset( $t_field['name'] ) ) {
 					$t_valid_cf = false;
 					$t_msg .= ", either 'name' or 'id' != 0 or must be given.";
@@ -176,7 +415,7 @@ function mci_issue_set_custom_fields( $p_issue_id, array &$p_custom_fields = nul
 			}
 
 			# get custom field id from object ref
-			$t_custom_field_id = mci_get_custom_field_id_from_objectref( $t_custom_field['field'] );
+			$t_custom_field_id = mci_get_custom_field_id_from_objectref( (object)$t_custom_field['field'] );
 
 			if( $t_custom_field_id == 0 ) {
 				return ApiObjectFactory::faultNotFound( "Custom field '" . $t_field['name'] . "' not found." );
@@ -724,13 +963,8 @@ function mc_issue_add( $p_username, $p_password, $p_issue ) {
 	$t_category = isset( $p_issue['category'] ) ? $p_issue['category'] : null;
 
 	$t_category_id = mci_get_category_id( $t_category, $t_project_id );
-	if( $t_category_id == 0 && !config_get( 'allow_no_category' ) ) {
-		if( !isset( $p_issue['category'] ) || is_blank( $p_issue['category'] ) ) {
-			return ApiObjectFactory::faultBadRequest( 'Category field must be supplied.' );
-		}
-
-		return ApiObjectFactory::faultBadRequest( 'Category \'' . $p_issue['category'] . '\' not found for project \'' .
-			$t_project_id . '\'.' );
+	if( ApiObjectFactory::isFault( $t_category_id ) ) {
+		return $t_category_id;
 	}
 
 	$t_version_id = isset( $p_issue['version'] ) ? mci_get_version_id( $p_issue['version'], $t_project_id ) : 0;
@@ -817,6 +1051,11 @@ function mc_issue_add( $p_username, $p_password, $p_issue ) {
 	$t_bug_data->process_mentions();
 
 	log_event( LOG_WEBSERVICE, 'created new issue id \'' . $t_issue_id . '\'' );
+
+	$t_cf_result = mci_project_custom_fields_validate( $t_project_id, $p_issue['custom_fields'] );
+	if( ApiObjectFactory::isFault( $t_cf_result ) ) {
+		return $t_cf_result;
+	}
 
 	$t_set_custom_field_error = mci_issue_set_custom_fields( $t_issue_id, $p_issue['custom_fields'], false );
 	if( $t_set_custom_field_error != null ) {
@@ -935,14 +1174,8 @@ function mc_issue_update( $p_username, $p_password, $p_issue_id, stdClass $p_iss
 	$t_category = isset( $p_issue['category'] ) ? $p_issue['category'] : null;
 
 	$t_category_id = mci_get_category_id( $t_category, $t_project_id );
-	if( $t_category_id == 0 && !config_get( 'allow_no_category' ) ) {
-		if( isset( $p_issue['category'] ) && !is_blank( $p_issue['category'] ) ) {
-			return ApiObjectFactory::faultBadRequest( 'Category field must be supplied.' );
-		}
-
-		$t_project_name = project_get_name( $t_project_id );
-		return ApiObjectFactory::faultBadRequest( 'Category \'' . $p_issue['category'] . '\' not found for project \'' .
-			$t_project_name . '\'.' );
+	if( ApiObjectFactory::isFault( $t_category_id ) ) {
+		return $t_category_id;
 	}
 
 	$t_version_id = isset( $p_issue['version'] ) ? mci_get_version_id( $p_issue['version'], $t_project_id ) : 0;
@@ -973,12 +1206,16 @@ function mc_issue_update( $p_username, $p_password, $p_issue_id, stdClass $p_iss
 	$t_bug_data->project_id = $t_project_id;
 	$t_bug_data->reporter_id = $t_reporter_id;
 
-	$t_access_check_result = mci_issue_handler_access_check( $t_user_id, $t_project_id, /* old */ $t_bug_data->handler_id, /* new */ $t_handler_id );
-	if( $t_access_check_result !== true ) {
-		return $t_access_check_result;
-	}
+	# Only check that user can handle the issue if it was modified by the update.
+	if( $t_bug_data->handler_id != $t_handler_id ) {
+		$t_access_check_result = mci_issue_handler_access_check(
+			$t_user_id, $t_project_id, /* old */ $t_bug_data->handler_id, /* new */ $t_handler_id );
+		if( $t_access_check_result !== true ) {
+			return $t_access_check_result;
+		}
 
-	$t_bug_data->handler_id = $t_handler_id;
+		$t_bug_data->handler_id = $t_handler_id;
+	}
 
 	$t_bug_data->category_id = $t_category_id;
 	$t_bug_data->summary = $t_summary;
@@ -1130,7 +1367,7 @@ function mc_issue_update( $p_username, $p_password, $p_issue_id, stdClass $p_iss
 
 	# submit the issue
 	log_event( LOG_WEBSERVICE, 'updating issue \'' . $p_issue_id . '\'' );
-	return $t_bug_data->update( true, true );
+	return $t_bug_data->update( /* update extended */ true, /* bypass email */ false );
 
 }
 
@@ -1650,6 +1887,11 @@ function mci_issue_data_as_array( BugData $p_issue_data, $p_user_id, $p_lang ) {
 	$t_issue['monitors'] = mci_account_get_array_by_ids( bug_get_monitors( $p_issue_data->id ) );
 
 	if( !ApiObjectFactory::$soap ) {
+		$t_history = mci_issue_get_history( $p_issue_data->id, $p_user_id, $p_lang );
+		if( !empty( $t_history ) ) {
+			$t_issue['history'] = $t_history;
+		}
+
 		mci_remove_null_keys( $t_issue );
 		mci_remove_empty_arrays( $t_issue );
 	}
@@ -1801,4 +2043,38 @@ function mc_issues_get_header( $p_username, $p_password, $p_issue_ids ) {
     }
 
     return $t_result;
+}
+
+/**
+ * Calculate hash for an issue.
+ *
+ * @param integer $p_issue_id The issue id.
+ * @param null|string|array $p_issue The issue or null if issue doesn't exist.
+ * @param integer $p_user_id The user id.
+ * @return string The hash of the issue.
+ */
+function mc_issue_hash( $p_issue_id, $p_issue, $p_user_id = null ) {
+	if( $p_user_id === null ) {
+		if( auth_is_user_authenticated() ) {
+			$t_user_id = auth_get_current_user_id();
+		} else {
+			$t_user_id = 0;
+		}
+	} else {
+		$t_user_id = (int)$p_user_id;
+	}
+
+	if( $p_issue === null ) {
+		$t_issue = '';
+	} else if( is_array( $p_issue ) ) {
+		$t_issue = json_encode( $p_issue );
+	} else {
+		$t_issue = $p_issue;
+	}
+
+	$t_issue_id = (int)$p_issue_id;
+
+	$t_str_to_hash = 'v1_' . $t_user_id . '_' . $t_issue_id . '_' . $t_issue;
+
+	return mci_etag_hash( $t_str_to_hash );
 }
